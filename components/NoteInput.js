@@ -1,19 +1,22 @@
 import React from "react";
 import { View, TextInput, TouchableOpacity, Text, StyleSheet } from "react-native";
 
-export default function NoteInput({ note, setNote, addNote }) {
+export default function NoteInput({ note, setNote, addNote, editingId, theme    }) {
     return (
         <View style={styles.inputContainer}>
             <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: theme.input, color: theme.text }]}
                 placeholder="Write a note..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={theme.placeholder}
                 value={note}
                 onChangeText={setNote}
             />
 
-            <TouchableOpacity style={styles.addButton} onPress={addNote}>
-                <Text style={styles.addButtonText}>Add</Text>
+
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.button }]} onPress={addNote}>
+                <Text style={styles.addButtonText}>
+                    {editingId ? "Update" : "Add"}
+                </Text>
             </TouchableOpacity>
         </View>
     );

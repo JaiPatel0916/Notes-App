@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 
-export default function NoteItem({ item, deleteNote }) {
+export default function NoteItem({ item, deleteNote, startEditing, theme }) {
 
     const confirmDelete = () => {
         Alert.alert(
@@ -15,8 +15,14 @@ export default function NoteItem({ item, deleteNote }) {
     };
 
     return (
-        <View style={styles.noteCard}>
-            <Text style={styles.noteText}>{item.text}</Text>
+        <View style={[styles.noteCard, { backgroundColor: theme.card }]}>
+
+            <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => startEditing(item)}
+            >
+                <Text style={[styles.noteText, { color: theme.text }]}>{item.text}</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={confirmDelete}>
                 <Text style={styles.deleteText}>🗑</Text>
@@ -38,7 +44,6 @@ const styles = StyleSheet.create({
 
     noteText: {
         color: "#fff",
-        flex: 1,
     },
 
     deleteText: {

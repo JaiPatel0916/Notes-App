@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 
-export default function NoteItem({ item, deleteNote, startEditing, theme }) {
+export default function NoteItem({ item, deleteNote, startEditing, theme , searchQuery}) {
 
     const confirmDelete = () => {
         Alert.alert(
@@ -13,6 +13,29 @@ export default function NoteItem({ item, deleteNote, startEditing, theme }) {
             ]
         );
     };
+    const highlightText = (text, query) => {
+        if (!query) return <Text style={[styles.noteText, { color: theme.text }]}>{text}</Text>;
+
+        const parts = text.split(new RegExp(`(${query})`, "gi"));
+       
+        return (
+            <Text style={[styles.noteText, { color: theme.text }]}>
+                {parts.map((part, index) =>
+                    part.toLowerCase() === query.toLowerCase() ? (
+                        <Text key={index} style={{ backgroundColor: "yellow", color: "#000" }}>
+                            {part}
+                        </Text>
+                    ) : (
+                        part
+                    )
+                )}
+            </Text>
+        );
+    };
+    const formatDate = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleString();
+    };
 
     return (
         <View style={[styles.noteCard, { backgroundColor: theme.card }]}>
@@ -21,8 +44,21 @@ export default function NoteItem({ item, deleteNote, startEditing, theme }) {
                 style={{ flex: 1 }}
                 onPress={() => startEditing(item)}
             >
-                <Text style={[styles.noteText, { color: theme.text }]}>{item.text}</Text>
+                <View>
+                    {highlightText(item.text, searchQuery)}
+
+                    <Text
+                        style={{
+                            fontSize: 12,
+                            color: theme.placeholder,
+                            marginTop: 5,
+                        }}
+                    >
+                        {formatDate(item.createdAt)}
+                    </Text>
+                </View>
             </TouchableOpacity>
+
 
             <TouchableOpacity onPress={confirmDelete}>
                 <Text style={styles.deleteText}>🗑</Text>

@@ -6,17 +6,29 @@ import {
   Keyboard,
   View,
   TouchableOpacity,
+  LayoutAnimation,
+  UIManager,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NoteInput from "./components/NoteInput";
 import NoteItem from "./components/NoteItem";
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === "android") {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
 export default function App() {
   const [note, setNote] = useState("");
   const [notes, setNotes] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [isDark, setIsDark] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortNewestFirst, setSortNewestFirst] = useState(true);
+
+
 
   // 🎨 Theme Object
   const theme = {
@@ -24,19 +36,25 @@ export default function App() {
     card: isDark ? "#1e293b" : "#ffffff",
     text: isDark ? "#ffffff" : "#0f172a",
     input: isDark ? "#1e293b" : "#ffffff",
-    placeholder: isDark ? "#94a3b8" : "#64748b",
+    placeholder: isDark ? "#94a3b8" : "#475569",
     button: "#3b82f6",
   };
 
-  // 🔹 Load Notes On App Start
+  // 🔹 Load Notes & Theme On App Start
   useEffect(() => {
     loadNotes();
+    loadTheme();
   }, []);
 
   // 🔹 Save Notes Whenever They Change
   useEffect(() => {
     saveNotes();
   }, [notes]);
+
+  // 🔹 Save Theme Whenever It Changes
+  useEffect(() => {
+    saveTheme();
+  }, [isDark]);
 
   const saveNotes = async () => {
     try {
@@ -57,19 +75,49 @@ export default function App() {
     }
   };
 
+  const saveTheme = async () => {
+    try {
+      await AsyncStorage.setItem("THEME", JSON.stringify(isDark));
+    } catch (error) {
+      console.log("Error saving theme:", error);
+    }
+  };
+
+  const loadTheme = async () => {
+    try {
+      const storedTheme = await AsyncStorage.getItem("THEME");
+      if (storedTheme !== null) {
+        setIsDark(JSON.parse(storedTheme));
+      }
+    } catch (error) {
+      console.log("Error loading theme:", error);
+    }
+  };
+
+  const toggleTheme = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsDark(!isDark);
+  };
+
   const addOrUpdateNote = () => {
     if (note.trim() === "") return;
 
     if (editingId) {
-      // UPDATE
       const updatedNotes = notes.map((item) =>
         item.id === editingId ? { ...item, text: note } : item
       );
       setNotes(updatedNotes);
       setEditingId(null);
     } else {
-      // ADD
-      setNotes([...notes, { id: Date.now().toString(), text: note }]);
+      setNotes([
+        ...notes,
+        {
+          id: Date.now().toString(),
+          text: note,
+          createdAt: Date.now(),
+        },
+      ]);
+
     }
 
     setNote("");
@@ -85,33 +133,80 @@ export default function App() {
     setNotes(notes.filter((item) => item.id !== id));
   };
 
+  const filteredNotes = notes.filter((item) =>
+    item.text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedNotes = [...filteredNotes].sort((a, b) =>
+    sortNewestFirst
+      ? b.createdAt - a.createdAt
+      : a.createdAt - b.createdAt
+  );
+
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      {/* 🔥 Header Section */}
+      {/* 🔥 Header */}
       <View style={styles.header}>
+
+        {/* Title */}
         <Text style={[styles.title, { color: theme.text }]}>
           📝 Jai's Notes
         </Text>
 
-        <TouchableOpacity onPress={() => setIsDark(!isDark)}>
-          <Text style={{ fontSize: 20 }}>
-            {isDark ? "☀️" : "🌙"}
-          </Text>
-        </TouchableOpacity>
+        {/* Right Side Controls */}
+        <View style={styles.headerControls}>
+
+          {/* Sort Toggle */}
+          <TouchableOpacity
+            onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setSortNewestFirst(!sortNewestFirst);
+            }}
+            style={[
+              styles.sortButton,
+              { backgroundColor: theme.card }
+            ]}
+          >
+            <Text style={{ color: theme.text, fontWeight: "600" }}>
+              {sortNewestFirst ? "Newest ↓" : "Oldest ↑"}
+              </Text>
+          </TouchableOpacity>
+
+          {/* Theme Toggle */}
+          <TouchableOpacity
+            onPress={toggleTheme}
+            style={[
+              styles.themeButton,
+              { backgroundColor: theme.card }
+            ]}
+          >
+            <Text style={{ fontSize: 16 }}>
+              {isDark ? "☀️" : "🌙"}
+            </Text>
+          </TouchableOpacity>
+
+        </View>
       </View>
 
-      <NoteInput
-        note={note}
-        setNote={setNote}
-        addNote={addOrUpdateNote}
-        editingId={editingId}
-        theme={theme}
-      />
+
+
+     <NoteInput
+  note={note}
+  setNote={setNote}
+  addNote={addOrUpdateNote}
+  editingId={editingId}
+  theme={theme}
+  searchQuery={searchQuery}
+  setSearchQuery={setSearchQuery}
+/>
+
 
       <FlatList
-        data={notes}
+        data={filteredNotes}
+
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <NoteItem
@@ -119,9 +214,19 @@ export default function App() {
             deleteNote={deleteNote}
             startEditing={startEditing}
             theme={theme}
+            searchQuery={searchQuery}
           />
+
+
+          
         )}
       />
+      {filteredNotes.length === 0 && (
+        <Text style={{ color: theme.text, textAlign: "center", marginTop: 20 }}>
+          No matching notes found
+        </Text>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -143,4 +248,33 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  headerControls: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  sortButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    elevation: 2,
+  },
+
+  themeButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 2,
+  },
+
 });
